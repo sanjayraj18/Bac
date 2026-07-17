@@ -1,6 +1,6 @@
 import { GoogleGenAI, Part, type Content } from "@google/genai";
 import config from "./config/config.js";
-import { executeTools, toolSchemas } from "./tools.js";
+import { executeTool, toolSchemas } from "./tools.js";
 
 const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
 const MODEL = "gemini-3.5-flash";
@@ -34,7 +34,7 @@ export async function runAgent(history: Content[]) {
       const call = part.functionCall!;
       console.log(`  [tool] ${call.name} ${JSON.stringify(call.args)}`);
 
-      const output = executeTools(
+      const output = executeTool(
         call.name ?? "",
         (call.args ?? {}) as Record<string, unknown>,
       );
