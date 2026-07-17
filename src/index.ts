@@ -1,14 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
-import config from "./config/config.js";
+import type { Content } from "@google/genai";
+import { runAgent } from "./agent.js";
 
-const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
+const task =
+  process.argv.slice(2).join(" ") ||
+  "How many files are in the current directory?";
 
-const stream = await ai.models.generateContentStream({
-  model: "gemini-3.5-flash",
-  contents: [{ role: "user", parts: [{ text: "Say hello in 3 languages" }] }],
-});
+const history: Content[] = [{ role: "user", parts: [{ text: task }] }];
 
-for await (const chunk of stream) {
-  process.stdout.write(chunk.text ?? "");
-}
-console.log();
+await runAgent(history);
