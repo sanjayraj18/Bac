@@ -40,7 +40,9 @@ async function callModelWithRetry(history: Content[], attempts = 4) {
 }
 
 export async function runAgent(history: Content[], confirm: confirmFn) {
+  let lastPromptTokens = 0;
   while (true) {
+    await maybeCompact(history, lastPromptTokens);
     const stream = await callModelWithRetry(history);
 
     const modelParts: Part[] = [];
@@ -58,10 +60,9 @@ export async function runAgent(history: Content[], confirm: confirmFn) {
     }
     process.stdout.write("\n");
     if (usage) {
-      const inTok = usage.promptTokenCount ?? 0;
+      lastPromptTokens = usage.promptTokenCount ?? 0;
       const outTok = usage.candidatesTokenCount ?? 0;
-      await maybeCompact(history, inTok);
-      console.log(`  [tokens: ${inTok} in / ${outTok} out]`);
+      console.log(`  [tokens: ${lastPromptTokens} in / ${outTok} out]`);
     }
 
     history.push({ role: "model", parts: modelParts });
