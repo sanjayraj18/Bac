@@ -32,7 +32,7 @@ export async function runAgent(history: Content[]) {
     const resultParts: Part[] = [];
     for (const part of toolCallParts) {
       const call = part.functionCall!;
-      console.log(`  [tool] ${call.name} ${JSON.stringify(call.args)}`);
+      console.log(`[tool] ${call.name} ${JSON.stringify(call.args)}`);
 
       const output = executeTool(
         call.name ?? "",
