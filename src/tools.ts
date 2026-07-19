@@ -1,6 +1,23 @@
 import { Type, type FunctionDeclaration } from "@google/genai";
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+
+function safePath(P: string): string {
+  const cwd = process.cwd();
+  const absolutePath = resolve(P);
+  const relativePath = relative(cwd, absolutePath);
+
+  const inside =
+    relativePath && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+
+  if (!inside) {
+    throw new Error(
+      `Path "${P}" is outside the project directory and is not allowed.`,
+    );
+  }
+  return absolutePath;
+}
 
 export const toolSchemas: FunctionDeclaration[] = [
   {
@@ -103,11 +120,11 @@ export function executeTool(
       }
       case "write": {
         const content = String(args.content);
-        writeFileSync(String(args.path), content);
+        writeFileSync(safePath(String(args.path)), content);
         return `Wrote ${content.length} bytes to ${args.path}`;
       }
       case "read": {
-        const path = String(args.path);
+        const path = safePath(String(args.path));
         const content = readFileSync(path, {
           encoding: "utf-8",
         });
@@ -134,7 +151,7 @@ export function executeTool(
         }
       }
       case "edit": {
-        const path = String(args.path);
+        const path = safePath(String(args.path));
         const old_string = String(args.old_string);
         const new_string = String(args.new_string);
 

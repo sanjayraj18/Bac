@@ -1,5 +1,6 @@
 import { GoogleGenAI, Part, type Content } from "@google/genai";
 import config from "./config/config.js";
+import { buildSystemPrompt } from "./prompt.js";
 import { executeTool, toolSchemas } from "./tools.js";
 
 const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
@@ -10,7 +11,10 @@ export async function runAgent(history: Content[]) {
     const stream = await ai.models.generateContentStream({
       model: MODEL,
       contents: history,
-      config: { tools: [{ functionDeclarations: toolSchemas }] },
+      config: {
+        systemInstruction: buildSystemPrompt(),
+        tools: [{ functionDeclarations: toolSchemas }],
+      },
     });
 
     const modelParts: Part[] = [];
