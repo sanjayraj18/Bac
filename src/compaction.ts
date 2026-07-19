@@ -14,8 +14,16 @@ export async function maybeCompact(
   if (lastPromptTokens < COMPACT_THRESHOLD) return;
   if (history.length <= KEEP_RECENT + 2) return;
 
-  const toSummarize = history.slice(0, history.length - KEEP_RECENT);
-  const toKeep = history.slice(history.length - KEEP_RECENT);
+  let keepFrom = history.length - KEEP_RECENT;
+  while (
+    keepFrom > 0 &&
+    history[keepFrom]?.parts?.some((p) => p.functionResponse)
+  ) {
+    keepFrom--;
+  }
+
+  const toSummarize = history.slice(0, keepFrom);
+  const toKeep = history.slice(keepFrom);
 
   const summaryResponse = await ai.models.generateContent({
     model: MODEL,
