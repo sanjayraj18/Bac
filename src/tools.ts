@@ -2,6 +2,7 @@ import { Type, type FunctionDeclaration } from "@google/genai";
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
+import { confirmFn } from "./agent.js";
 
 function safePath(P: string): string {
   const cwd = process.cwd();
@@ -105,14 +106,21 @@ export const toolSchemas: FunctionDeclaration[] = [
   },
 ];
 
-export function executeTool(
+export async function executeTool(
   name: string,
   args: Record<string, unknown>,
-): string {
+  confrim: confirmFn,
+): Promise<string> {
   try {
     switch (name) {
       case "bash": {
-        const output = execSync(String(args.command), {
+        const command = String(args.command);
+        const ok = await confrim(`Run this command?\n  ${command}`);
+        if (!ok) {
+          return "User denied this command. Do not retry it; consider an alternative.";
+        }
+
+        const output = execSync(command, {
           encoding: "utf-8",
           timeout: 30_000,
         });

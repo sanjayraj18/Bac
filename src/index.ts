@@ -7,6 +7,13 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
+const confirm = async (question: string): Promise<boolean> => {
+  const answer = (await rl.question(`\n${question}\nallow? (y/n) `))
+    .trim()
+    .toLowerCase();
+  return answer === "y" || answer === "yes";
+};
+
 const history: Content[] = [];
 
 console.log('bac v0.1 — type a task, or "exit" to quit\n');
@@ -21,7 +28,14 @@ while (true) {
   }
 
   history.push({ role: "user", parts: [{ text: input }] });
-  await runAgent(history);
+  try {
+    await runAgent(history, confirm);
+  } catch (err) {
+    console.log(
+      `\n[error] ${err instanceof Error ? err.message : err}\nTry again or type a new task.`,
+    );
+  }
+
   console.log();
 }
 

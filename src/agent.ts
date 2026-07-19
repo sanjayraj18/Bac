@@ -3,19 +3,44 @@ import config from "./config/config.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { executeTool, toolSchemas } from "./tools.js";
 
+export type confirmFn = (question: string) => Promise<boolean>;
+
 const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
 const MODEL = "gemini-3.5-flash";
 
-export async function runAgent(history: Content[]) {
+async function callModelWithRetry(history: Content[], attempts = 4) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await ai.models.generateContentStream({
+        model: MODEL,
+        contents: history,
+        config: {
+          systemInstruction: buildSystemPrompt(),
+          tools: [{ functionDeclarations: toolSchemas }],
+        },
+      });
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 0;
+      const code = (err as { cause?: { code?: string } }).cause?.code ?? "";
+      const retryable =
+        status === 429 ||
+        status >= 500 ||
+        code === "ECONNRESET" ||
+        code === "ETIMEDOUT";
+      if (!retryable || i === attempts - 1) throw err;
+      const waitMs = 2 ** i * 2000; // 2s, 4s, 8s
+      console.log(
+        `  [retry ${i + 1}/${attempts}] ${status || code}, waiting ${waitMs / 1000}s…`,
+      );
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw new Error("unreachable");
+}
+
+export async function runAgent(history: Content[], confirm: confirmFn) {
   while (true) {
-    const stream = await ai.models.generateContentStream({
-      model: MODEL,
-      contents: history,
-      config: {
-        systemInstruction: buildSystemPrompt(),
-        tools: [{ functionDeclarations: toolSchemas }],
-      },
-    });
+    const stream = await callModelWithRetry(history);
 
     const modelParts: Part[] = [];
     for await (const chunk of stream) {
@@ -41,10 +66,7 @@ export async function runAgent(history: Content[]) {
       const output = executeTool(
         call.name ?? "",
         (call.args ?? {}) as Record<string, unknown>,
-      );
-
-      console.log(
-        `[result] ${output.length > 300 ? output.slice(0, 300) + "…" : output}`,
+        confirm,
       );
 
       resultParts.push({
