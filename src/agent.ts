@@ -43,13 +43,24 @@ export async function runAgent(history: Content[], confirm: confirmFn) {
     const stream = await callModelWithRetry(history);
 
     const modelParts: Part[] = [];
+    let usage:
+      | { promptTokenCount?: number; candidatesTokenCount?: number }
+      | undefined;
+
     for await (const chunk of stream) {
+      if (chunk.usageMetadata) usage = chunk.usageMetadata;
+
       for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
         if (part.text && !part.thought) process.stdout.write(part.text);
         modelParts.push(part);
       }
     }
     process.stdout.write("\n");
+    if (usage) {
+      const inTok = usage.promptTokenCount ?? 0;
+      const outTok = usage.candidatesTokenCount ?? 0;
+      console.log(`  [tokens: ${inTok} in / ${outTok} out]`);
+    }
 
     history.push({ role: "model", parts: modelParts });
 
