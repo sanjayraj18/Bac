@@ -1,4 +1,5 @@
 import { GoogleGenAI, Part, type Content } from "@google/genai";
+import { maybeCompact } from "./compaction.js";
 import config from "./config/config.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { executeTool, toolSchemas } from "./tools.js";
@@ -59,6 +60,7 @@ export async function runAgent(history: Content[], confirm: confirmFn) {
     if (usage) {
       const inTok = usage.promptTokenCount ?? 0;
       const outTok = usage.candidatesTokenCount ?? 0;
+      await maybeCompact(history, inTok);
       console.log(`  [tokens: ${inTok} in / ${outTok} out]`);
     }
 
