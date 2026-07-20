@@ -57,6 +57,7 @@ export async function runAgent(
   let lastPromptTokens = 0;
   while (true) {
     await maybeCompact(history, lastPromptTokens);
+    emit({ type: "thinking_start" });
     const stream = await callModelWithRetry(history, emit);
 
     const modelParts: Part[] = [];
@@ -64,7 +65,12 @@ export async function runAgent(
       | { promptTokenCount?: number; candidatesTokenCount?: number }
       | undefined;
 
+    let firstChunk = true;
     for await (const chunk of stream) {
+      if (firstChunk) {
+        emit({ type: "thinking_end" });
+        firstChunk = false;
+      }
       if (chunk.usageMetadata) usage = chunk.usageMetadata;
 
       for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {

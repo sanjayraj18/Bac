@@ -5,6 +5,8 @@ export type AgentEvent =
   | { type: "turn_end"; inTokens: number; outTokens: number }
   | { type: "retry"; attempt: number; max: number; reason: string }
   | { type: "compacted"; summarized: number }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "thinking_start" }
+  | { type: "thinking_end" };
 
 export type EventSink = (event: AgentEvent) => void;
