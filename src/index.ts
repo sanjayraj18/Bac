@@ -1,6 +1,7 @@
 import type { Content } from "@google/genai";
 import * as readline from "node:readline/promises";
 import { runAgent } from "./agent.js";
+import { handleCommand } from "./command.js";
 import { render } from "./renderer.js";
 import {
   listSessions,
@@ -45,7 +46,10 @@ while (true) {
   if (input === "") {
     continue;
   }
-
+  if (handleCommand(input, history)) {
+    console.log();
+    continue;
+  }
   history.push({ role: "user", parts: [{ text: input }] });
   try {
     await runAgent(history, render, confirm);
