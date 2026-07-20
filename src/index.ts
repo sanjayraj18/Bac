@@ -1,6 +1,7 @@
 import type { Content } from "@google/genai";
 import * as readline from "node:readline/promises";
 import { runAgent } from "./agent.js";
+import { render } from "./renderer.js";
 import {
   listSessions,
   loadSession,
@@ -47,11 +48,12 @@ while (true) {
 
   history.push({ role: "user", parts: [{ text: input }] });
   try {
-    await runAgent(history, confirm);
+    await runAgent(history, render, confirm);
   } catch (err) {
-    console.log(
-      `\n[error] ${err instanceof Error ? err.message : err}\nTry again or type a new task.`,
-    );
+    render({
+      type: "error",
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
   saveSession(sessionId, history);
   console.log();
