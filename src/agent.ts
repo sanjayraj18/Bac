@@ -22,7 +22,7 @@ async function callModelWithRetry(
         contents: history,
         config: {
           systemInstruction: buildSystemPrompt(),
-          tools: [{ functionDeclarations: toolSchemas }],
+          tools: [{ functionDeclarations: toolSchemas as any }],
         },
       });
     } catch (err) {

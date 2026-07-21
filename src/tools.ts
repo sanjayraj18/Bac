@@ -1,4 +1,3 @@
-import { Type, type FunctionDeclaration } from "@google/genai";
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
@@ -20,16 +19,16 @@ function safePath(P: string): string {
   return absolutePath;
 }
 
-export const toolSchemas: FunctionDeclaration[] = [
+export const toolSchemas = [
   {
     name: "bash",
     description:
       "Run a shell command on the user's machine. Returns stdout and stderr.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
         command: {
-          type: Type.STRING,
+          type: "string",
           description: "The shell command to execute",
         },
       },
@@ -40,11 +39,11 @@ export const toolSchemas: FunctionDeclaration[] = [
     name: "write",
     description: "Create or overwrite a file with the given content.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
-        path: { type: Type.STRING, description: "File path to write to" },
+        path: { type: "string", description: "File path to write to" },
         content: {
-          type: Type.STRING,
+          type: "string",
           description: "Full content of the file",
         },
       },
@@ -56,9 +55,9 @@ export const toolSchemas: FunctionDeclaration[] = [
     description:
       "Read a file from disk and return its contents with line numbers.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
-        path: { type: Type.STRING, description: "File Path to read to" },
+        path: { type: "string", description: "File Path to read to" },
       },
       required: ["path"],
     },
@@ -68,14 +67,14 @@ export const toolSchemas: FunctionDeclaration[] = [
     description:
       "Search for a regex pattern across files in the project. Returns matching lines with file path and line number.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
         pattern: {
-          type: Type.STRING,
+          type: "string",
           description: "The regex pattern to search for",
         },
         path: {
-          type: Type.STRING,
+          type: "string",
           description:
             "Directory or file to search in. Defaults to the current directory.",
         },
@@ -88,16 +87,16 @@ export const toolSchemas: FunctionDeclaration[] = [
     description:
       "Replace an exact string in a file with a new string. The old_string must appear exactly once.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
-        path: { type: Type.STRING, description: "File path to write to" },
+        path: { type: "string", description: "File path to write to" },
         old_string: {
-          type: Type.STRING,
+          type: "string",
           description:
             "The exact text to find. Must appear exactly once in the file.",
         },
         new_string: {
-          type: Type.STRING,
+          type: "string",
           description: "The text to replace old_string with.",
         },
       },
