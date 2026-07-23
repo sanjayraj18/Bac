@@ -1,7 +1,7 @@
 import { AgentEvent } from "../event.js";
 
 export type NeutralMessage =
-  | { role: "user"; text: String }
+  | { role: "user"; text: string }
   | { role: "assistant"; text: string; toolCalls?: NeutralToolCall[] }
   | { role: "tool"; toolCallId: string; name: string; output: string };
 
