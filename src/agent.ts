@@ -1,31 +1,47 @@
-import { GoogleGenAI, Part, type Content } from "@google/genai";
 import { maybeCompact } from "./compaction.js";
-import config from "./config/config.js";
 import { EventSink } from "./event.js";
 import { buildSystemPrompt } from "./prompt.js";
+import { getProvider } from "./providers/index.js";
+import { NeutralMessage, NeutralTool, Provider } from "./providers/types.js";
 import { executeTool, toolSchemas } from "./tools.js";
 
 export type confirmFn = (question: string) => Promise<boolean>;
 
-const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
-const MODEL = "gemini-3.5-flash";
+const neutralTools: NeutralTool[] = toolSchemas.map((t) => ({
+  name: t.name,
+  description: t.description,
+  parameters: t.parameters as Record<string, unknown>,
+}));
 
-async function callModelWithRetry(
-  history: Content[],
+async function streamTurnWithRetry(
+  provider: Provider,
+  history: NeutralMessage[],
   emit: EventSink,
   attempts = 4,
-) {
+): Promise<{ assistant: NeutralMessage; inTokens: number }> {
   for (let i = 0; i < attempts; i++) {
+    emit({ type: "thinking_start" });
+    let sawEvent = false;
     try {
-      return await ai.models.generateContentStream({
-        model: MODEL,
-        contents: history,
-        config: {
-          systemInstruction: buildSystemPrompt(),
-          tools: [{ functionDeclarations: toolSchemas as any }],
-        },
-      });
+      const stream = provider.stream(
+        history,
+        neutralTools,
+        buildSystemPrompt(),
+      );
+
+      let inTokens = 0;
+      for await (const event of stream) {
+        if (!sawEvent) {
+          emit({ type: "thinking_end" });
+          sawEvent = true;
+        }
+        if (event.type === "turn_end") inTokens = event.inTokens;
+        emit(event);
+      }
+
+      return { assistant: await stream.result(), inTokens };
     } catch (err) {
+      if (!sawEvent) emit({ type: "thinking_end" });
       const status = (err as { status?: number }).status ?? 0;
       const code = (err as { cause?: { code?: string } }).cause?.code ?? "";
       const retryable =
@@ -50,69 +66,38 @@ async function callModelWithRetry(
 }
 
 export async function runAgent(
-  history: Content[],
+  history: NeutralMessage[],
   emit: EventSink,
   confirm: confirmFn,
 ) {
+  const provider = getProvider();
   let lastPromptTokens = 0;
   while (true) {
     await maybeCompact(history, lastPromptTokens);
-    emit({ type: "thinking_start" });
-    const stream = await callModelWithRetry(history, emit);
 
-    const modelParts: Part[] = [];
-    let usage:
-      | { promptTokenCount?: number; candidatesTokenCount?: number }
-      | undefined;
+    const { assistant, inTokens } = await streamTurnWithRetry(
+      provider,
+      history,
+      emit,
+    );
+    lastPromptTokens = inTokens;
+    history.push(assistant);
 
-    let firstChunk = true;
-    for await (const chunk of stream) {
-      if (firstChunk) {
-        emit({ type: "thinking_end" });
-        firstChunk = false;
-      }
-      if (chunk.usageMetadata) usage = chunk.usageMetadata;
+    const toolCalls =
+      assistant.role === "assistant" ? (assistant.toolCalls ?? []) : [];
+    if (toolCalls.length === 0) return;
 
-      for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-        if (part.text && !part.thought) emit({ type: "text", text: part.text });
-        modelParts.push(part);
-      }
-    }
-    process.stdout.write("\n");
-    if (usage) {
-      lastPromptTokens = usage.promptTokenCount ?? 0;
+    for (const call of toolCalls) {
+      emit({ type: "tool_start", name: call.name, args: call.args });
+      const output = await executeTool(call.name, call.args, confirm);
+      emit({ type: "tool_result", name: call.name, output });
 
-      emit({
-        type: "turn_end",
-        inTokens: lastPromptTokens,
-        outTokens: usage.candidatesTokenCount ?? 0,
+      history.push({
+        role: "tool",
+        toolCallId: call.id,
+        name: call.name,
+        output,
       });
     }
-
-    history.push({ role: "model", parts: modelParts });
-
-    const toolCallParts = modelParts.filter((p) => p.functionCall);
-    if (toolCallParts.length === 0) {
-      return;
-    }
-
-    const resultParts: Part[] = [];
-    for (const part of toolCallParts) {
-      const call = part.functionCall!;
-      emit({ type: "tool_start", name: call.name ?? "", args: call.args });
-
-      const output = await executeTool(
-        call.name ?? "",
-        (call.args ?? {}) as Record<string, unknown>,
-        confirm,
-      );
-
-      emit({ type: "tool_result", name: call.name ?? "", output });
-
-      resultParts.push({
-        functionResponse: { name: call.name ?? "", response: { output } },
-      });
-    }
-    history.push({ role: "user", parts: resultParts });
   }
 }
