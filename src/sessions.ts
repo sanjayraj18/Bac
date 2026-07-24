@@ -1,4 +1,3 @@
-import { Content } from "@google/genai";
 import {
   existsSync,
   mkdirSync,
@@ -8,6 +7,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { NeutralMessage } from "./providers/types.js";
 
 const SESSION_DIR = join(homedir(), ".bac", "sessions");
 
@@ -17,16 +17,16 @@ function ensureDir() {
   }
 }
 
-export function saveSession(id: string, history: Content[]): void {
+export function saveSession(id: string, history: NeutralMessage[]): void {
   ensureDir();
   const file = join(SESSION_DIR, `${id}.json`);
   writeFileSync(file, JSON.stringify(history, null, 2));
 }
 
-export function loadSession(id: string): Content[] {
+export function loadSession(id: string): NeutralMessage[] {
   const file = join(SESSION_DIR, `${id}.json`);
   if (!existsSync(file)) throw new Error(`Session "${id}" not found`);
-  return JSON.parse(readFileSync(file, "utf-8")) as Content[];
+  return JSON.parse(readFileSync(file, "utf-8")) as NeutralMessage[];
 }
 
 export function listSessions(): string[] {

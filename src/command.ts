@@ -1,7 +1,10 @@
-import { Content } from "@google/genai";
+import type { NeutralMessage } from "./providers/types.js";
 import { listSessions, loadSession } from "./sessions.js";
 
-export function handleCommand(input: string, history: Content[]): boolean {
+export function handleCommand(
+  input: string,
+  history: NeutralMessage[],
+): boolean {
   if (!input.startsWith("/")) return false;
 
   const [cmd] = input.slice(1).split(" ");

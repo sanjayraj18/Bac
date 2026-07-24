@@ -1,7 +1,7 @@
-import type { Content } from "@google/genai";
 import * as readline from "node:readline/promises";
 import { runAgent } from "./agent.js";
 import { handleCommand } from "./command.js";
+import type { NeutralMessage } from "./providers/types.js";
 import { render } from "./renderer.js";
 import {
   listSessions,
@@ -17,7 +17,7 @@ const rl = readline.createInterface({
 
 const resume = process.argv.includes("--resume");
 let sessionId: string;
-let history: Content[];
+let history: NeutralMessage[];
 
 if (resume && listSessions().length > 0) {
   sessionId = listSessions().sort().at(-1)!;
@@ -50,7 +50,9 @@ while (true) {
     console.log();
     continue;
   }
-  history.push({ role: "user", parts: [{ text: input }] });
+
+  history.push({ role: "user", text: input });
+
   try {
     await runAgent(history, render, confirm);
   } catch (err) {
